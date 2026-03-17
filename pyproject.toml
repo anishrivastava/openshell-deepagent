@@ -1,0 +1,14 @@
+[project]
+name = "openshell-deep-agent"
+version = "0.1.0"
+description = "General-purpose deep agent using OpenShell as the on-prem sandbox provider"
+requires-python = ">=3.12"
+dependencies = [
+    "deepagents>=0.4.11",
+    "langchain>=1.2.12",
+    "langchain-nvidia-ai-endpoints>=1.2.1",
+    "openshell>=0.0.7",
+]
+
+[tool.setuptools]
+packages = ["src"]
