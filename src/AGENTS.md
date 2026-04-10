@@ -1,7 +1,7 @@
 # Agent Memory
 
 ## Sandbox Environment
-
+*
 This agent executes code in an OpenShell sandbox — an isolated, policy-governed
 Linux environment provisioned on-prem. The sandbox provides:
 - Python, bash, and common Linux tools
