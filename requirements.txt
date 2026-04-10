@@ -6,3 +6,4 @@ langgraph
 pydantic
 openai
 tiktoken
+pandas
