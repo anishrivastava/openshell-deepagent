@@ -288,8 +288,30 @@ def underutilized_plants_node(state: AgentState):
     return {"result": "Most underutilized plants:\n" + "\n".join(lines)}
 
 
+# def truck_schedule_node(state: AgentState):
+#     result = create_truck_schedule.invoke({})
+#     if result["status"] != "success":
+#         return {"result": result["message"]}
+
+#     lines = []
+#     for row in result["schedule"]:
+#         lines.append(
+#             f"{row['truck_id']} | {row['truck_type']} | "
+#             f"{row['plant']} → {row['destination']} | "
+#             f"{row['load']} cases | Date: {row['planned_date']}"
+#         )
+
+#     return {
+#     "result": "Truck Schedule:\n" + "\n".join(lines),
+#     "data": result["schedule"]   # 🔥 STORE DATA
+# }
 def truck_schedule_node(state: AgentState):
-    result = create_truck_schedule.invoke({})
+
+    # 🔥 FIXED LINE
+    result = create_truck_schedule.invoke({
+        "data": state.get("data")
+    })
+
     if result["status"] != "success":
         return {"result": result["message"]}
 
@@ -302,10 +324,9 @@ def truck_schedule_node(state: AgentState):
         )
 
     return {
-    "result": "Truck Schedule:\n" + "\n".join(lines),
-    "data": result["schedule"]   # 🔥 STORE DATA
-}
-
+        "result": "Truck Schedule:\n" + "\n".join(lines),
+        "data": result["schedule"]
+    }
 
 def adherence_node(state: AgentState):
     result = check_dispatch_adherence.invoke({})
