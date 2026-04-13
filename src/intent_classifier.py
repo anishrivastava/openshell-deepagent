@@ -104,11 +104,11 @@ def classify_intent(user_input: str) -> str:
 
     user_input_lower = user_input.lower()
 
-    # 🔥 HARD RULES (FAST + ACCURATE)
-    if "utilization" in user_input_lower or "efficiency" in user_input_lower:
+    # 🔥 HARD RULES
+    if any(word in user_input_lower for word in ["utilization", "efficiency"]):
         return "truck_utilization"
 
-    if "reconciliation" in user_input_lower or "invoice" in user_input_lower:
+    if any(word in user_input_lower for word in ["reconcile", "reconciliation", "invoice", "billing", "mismatch"]):
         return "reconciliation"
 
     if "schedule" in user_input_lower or "truck plan" in user_input_lower:

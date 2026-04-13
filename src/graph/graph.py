@@ -234,7 +234,8 @@ class AgentState(TypedDict):
     user_input: str
     intent: str
     result: str
-    data: list   # 🔥 NEW (store truck plan)
+    data: list
+    finance_data: dict   # 🔥 ADD THIS# 🔥 NEW (store truck plan)
 
 
 # =========================
@@ -358,8 +359,25 @@ def truck_utilization_node(state: AgentState):
     return {"result": "Truck Utilization:\n" + "\n".join(lines)}
 
 
+# def reconciliation_node(state: AgentState):
+#     result = run_reconciliation.invoke({})
+#     if result["status"] != "success":
+#         return {"result": result["message"]}
+
+#     lines = []
+#     for row in result["reconciliation"]:
+#         lines.append(
+#             f"{row['invoice_id']} | {row['status']} | {row['remark']}"
+#         )
+
+#     return {"result": "Reconciliation Report:\n" + "\n".join(lines)}
+
 def reconciliation_node(state: AgentState):
-    result = run_reconciliation.invoke({})
+
+    result = run_reconciliation.invoke({
+        "data": state.get("finance_data")   # 🔥 FIX
+    })
+
     if result["status"] != "success":
         return {"result": result["message"]}
 
@@ -369,8 +387,9 @@ def reconciliation_node(state: AgentState):
             f"{row['invoice_id']} | {row['status']} | {row['remark']}"
         )
 
-    return {"result": "Reconciliation Report:\n" + "\n".join(lines)}
-
+    return {
+        "result": "Reconciliation Report:\n" + "\n".join(lines)
+    }
 
 def governance_node(state: AgentState):
     result = check_governance.invoke({})
@@ -465,7 +484,7 @@ graph_builder.add_conditional_edges(
         "reconciliation": "reconciliation_node",
         "governance": "governance_node",
         "unknown": "unknown_node",
-        "filter_plan": "filter_plan_node",
+        "filter_plan": "filter_plan_node", 
     }
 )
 
