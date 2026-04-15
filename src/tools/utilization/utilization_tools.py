@@ -73,12 +73,85 @@
 #         "underutilized_plants": underutilized.to_dict(orient="records")
 #     }
 
+# import pandas as pd
+# from langchain_core.tools import tool
+
+
+# @tool
+# def get_underutilized_plants(data: list):
+#     """
+#     Get most underutilized plants from provided data
+#     """
+
+#     # =========================
+#     # VALIDATION
+#     # =========================
+#     if not data:
+#         return {"status": "failed", "message": "No data received"}
+
+#     try:
+#         df = pd.DataFrame(data)
+#     except Exception as e:
+#         return {"status": "failed", "message": str(e)}
+
+#     # =========================
+#     # CLEAN COLUMN NAMES
+#     # =========================
+#     df.columns = df.columns.str.lower().str.strip()
+
+#     # =========================
+#     # COLUMN DETECTION
+#     # =========================
+#     plant_col = None
+#     for col in ["plant", "plant_code", "source"]:
+#         if col in df.columns:
+#             plant_col = col
+#             break
+
+#     util_col = None
+#     for col in ["utilization_%", "utilization", "utilisation_%", "utilisation"]:
+#         if col in df.columns:
+#             util_col = col
+#             break
+
+#     if plant_col is None or util_col is None:
+#         return {
+#             "status": "failed",
+#             "message": f"Required columns not found. Available: {list(df.columns)}"
+#         }
+
+#     # =========================
+#     # CLEAN DATA
+#     # =========================
+#     cleaned = df[[plant_col, util_col]].copy()
+#     cleaned = cleaned.dropna()
+#     cleaned[util_col] = pd.to_numeric(cleaned[util_col], errors="coerce")
+#     cleaned = cleaned.dropna(subset=[util_col])
+
+#     # =========================
+#     # GET UNDERUTILIZED
+#     # =========================
+#     underutilized = (
+#         cleaned.sort_values(util_col, ascending=True)
+#         .head(5)
+#         .reset_index(drop=True)
+#     )
+
+#     return {
+#         "status": "success",
+#         "plant_column": plant_col,
+#         "utilization_column": util_col,
+#         "underutilized_plants": underutilized.to_dict(orient="records")
+#     } 
+
+
+
 import pandas as pd
 from langchain_core.tools import tool
 
 
 @tool
-def get_underutilized_plants(data: list):
+def get_underutilized_plants(data: dict):
     """
     Get most underutilized plants from provided data
     """
@@ -86,11 +159,11 @@ def get_underutilized_plants(data: list):
     # =========================
     # VALIDATION
     # =========================
-    if not data:
-        return {"status": "failed", "message": "No data received"}
+    if not data or "utilization" not in data:
+        return {"status": "failed", "message": "No utilization data received"}
 
     try:
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(data.get("utilization", []))
     except Exception as e:
         return {"status": "failed", "message": str(e)}
 
@@ -142,4 +215,4 @@ def get_underutilized_plants(data: list):
         "plant_column": plant_col,
         "utilization_column": util_col,
         "underutilized_plants": underutilized.to_dict(orient="records")
-    } 
+    }

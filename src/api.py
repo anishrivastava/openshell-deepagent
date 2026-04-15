@@ -185,8 +185,14 @@ async def process_agent(
 
             # EXCEL (🔥 IMPORTANT FOR YOU)
             elif filename.endswith(".xlsx"):
-                df = pd.read_excel(file.file, sheet_name="dispatch_plan")
-                data = df.to_dict(orient="records")
+                excel = pd.ExcelFile(file.file)
+                data = {}
+                if "dispatch_plan" in excel.sheet_names:
+                    df_dispatch = pd.read_excel(excel, "dispatch_plan")
+                    data["dispatch"] = df_dispatch.to_dict(orient="records")
+                    if "capacity_utilization" in excel.sheet_names:
+                        df_util = pd.read_excel(excel, "capacity_utilization")
+                        data["utilization"] = df_util.to_dict(orient="records")
 
             # IMAGE
             elif filename.endswith((".png", ".jpg", ".jpeg")):
