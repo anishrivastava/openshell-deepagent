@@ -411,15 +411,38 @@ def reconciliation_node(state: AgentState):
         "result": "Reconciliation Report:\n" + "\n".join(lines)
     }
 
+# def governance_node(state: AgentState):
+#     result = check_governance.invoke({
+#     "image": state.get("image"),
+#     "stage": "loading"   # later dynamic karenge
+# })
+#     if result["status"] != "success":
+#         return {"result": result["message"]}
+
+#     lines = ["Governance Report:"]
+#     for row in result["governance"]:
+#         lines.append(
+#             f"{row['truck_id']} | {row['stage']} | {row['status']} | {row['remark']}"
+#         )
+
+#     return {"result": "\n".join(lines)}
+
+
 def governance_node(state: AgentState):
-    result = check_governance.invoke({})
+
+    result = check_governance.invoke({
+        "image": state.get("image"),
+        "stage": "loading"
+    })
+
     if result["status"] != "success":
         return {"result": result["message"]}
 
-    lines = ["Governance Report:"]
+    lines = ["Hi 👋, here is your governance report:\n"]
+
     for row in result["governance"]:
         lines.append(
-            f"{row['truck_id']} | {row['stage']} | {row['status']} | {row['remark']}"
+            f"{row['stage']} | {row['status']} | {row['remark']}"
         )
 
     return {"result": "\n".join(lines)}
