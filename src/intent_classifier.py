@@ -103,11 +103,14 @@ User: which trucks are underutilized
 def classify_intent(user_input: str) -> str:
 
     user_input_lower = user_input.lower()
-
-    # 🔥 HARD RULES
-    if any(word in user_input_lower for word in ["utilization", "efficiency"]):
-        return "truck_utilization"
-
+    if "plant" in user_input_lower and "utilization" in user_input_lower:
+       return "underutilized_plants"
+    if any(word in user_input_lower for word in ["truck utilization", "truck efficiency"]):
+       return "truck_utilization"
+    if any(word in user_input_lower for word in ["reconcile", "invoice", "billing"]):
+       return "reconciliation"
+    if "schedule" in user_input_lower or "truck plan" in user_input_lower:
+       return "truck_schedule"
     if any(word in user_input_lower for word in ["reconcile", "reconciliation", "invoice", "billing", "mismatch"]):
         return "reconciliation"
 
@@ -139,4 +142,4 @@ def classify_intent(user_input: str) -> str:
     if intent not in allowed:
         return "unknown"
 
-    return intent 
+    return intent    
