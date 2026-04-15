@@ -274,8 +274,27 @@ def top_dispatch_node(state: AgentState):
     return {"result": "Top 5 cities by dispatch:\n" + "\n".join(lines)}
 
 
+# def underutilized_plants_node(state: AgentState):
+#     result = get_underutilized_plants.invoke({})
+#     if result["status"] != "success":
+#         return {"result": result["message"]}
+
+#     plant_col = result["plant_column"]
+#     util_col = result["utilization_column"]
+
+#     lines = []
+#     for i, row in enumerate(result["underutilized_plants"], start=1):
+#         lines.append(f"{i}. {row[plant_col]} - {row[util_col]:.2f}%")
+
+#     return {"result": "Most underutilized plants:\n" + "\n".join(lines)}
+
 def underutilized_plants_node(state: AgentState):
-    result = get_underutilized_plants.invoke({})
+
+    # 🔥 FIXED LINE
+    result = get_underutilized_plants.invoke({
+        "data": state.get("data")
+    })
+
     if result["status"] != "success":
         return {"result": result["message"]}
 
@@ -286,8 +305,9 @@ def underutilized_plants_node(state: AgentState):
     for i, row in enumerate(result["underutilized_plants"], start=1):
         lines.append(f"{i}. {row[plant_col]} - {row[util_col]:.2f}%")
 
-    return {"result": "Most underutilized plants:\n" + "\n".join(lines)}
-
+    return {
+        "result": "Hi 👋, here are the most underutilized plants:\n\n" + "\n".join(lines)
+    }
 
 # def truck_schedule_node(state: AgentState):
 #     result = create_truck_schedule.invoke({})
