@@ -364,8 +364,27 @@ def adherence_node(state: AgentState):
     return {"result": "Dispatch Adherence:\n" + "\n".join(lines)}
 
 
+# def truck_utilization_node(state: AgentState):
+#     result = check_truck_utilization.invoke({})
+#     if result["status"] != "success":
+#         return {"result": result["message"]}
+
+#     lines = []
+#     for row in result["truck_utilization"]:
+#         lines.append(
+#             f"{row['route']} | {row['truck_type']} | "
+#             f"{row['utilization']}% | {row['status']} | {row['alert']}"
+#         )
+
+#     return {"result": "Truck Utilization:\n" + "\n".join(lines)}
+
 def truck_utilization_node(state: AgentState):
-    result = check_truck_utilization.invoke({})
+
+    # 🔥 FIXED
+    result = check_truck_utilization.invoke({
+        "data": state.get("data")
+    })
+
     if result["status"] != "success":
         return {"result": result["message"]}
 
@@ -376,7 +395,9 @@ def truck_utilization_node(state: AgentState):
             f"{row['utilization']}% | {row['status']} | {row['alert']}"
         )
 
-    return {"result": "Truck Utilization:\n" + "\n".join(lines)}
+    return {
+        "result": "Hi 👋, here is your truck utilization report:\n\n" + "\n".join(lines)
+    }
 
 
 # def reconciliation_node(state: AgentState):
