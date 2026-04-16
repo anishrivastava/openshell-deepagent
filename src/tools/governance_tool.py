@@ -1,221 +1,5 @@
 
 
-
-# from pathlib import Path
-# import pandas as pd
-# import pytesseract
-# import cv2
-# import base64
-# import json
-# from langchain_core.tools import tool
-# from langchain_openai import ChatOpenAI
-
-# # 🔥 Vision model (LangChain)
-# vision_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
-# # 🔥 Set tesseract path (Windows)
-# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-
-
-# # =========================
-# # OCR FUNCTION
-# # =========================
-# def extract_text(image_path: str):
-#     try:
-#         img = cv2.imread(image_path)
-
-#         if img is None:
-#             return ""
-
-#         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#         gray = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
-
-#         text = pytesseract.image_to_string(gray)
-
-#         return text.upper()
-
-#     except Exception:
-#         return ""
-
-
-# # =========================
-# # IMAGE → BASE64
-# # =========================
-# def encode_image(image_path):
-#     try:
-#         with open(image_path, "rb") as f:
-#             return base64.b64encode(f.read()).decode("utf-8")
-#     except Exception:
-#         return None
-
-
-# # =========================
-# # VISION FUNCTION
-# # =========================
-# def analyze_image(image_path, stage):
-#     base64_image = encode_image(image_path)
-
-#     if base64_image is None:
-#         return {"status": "ERROR", "reason": "Image not found"}
-
-#     prompt = f"""
-#     You are a supply chain audit AI.
-
-#     Analyze the image for stage: {stage}
-
-#     Rules:
-#     - loading → check if truck is present
-#     - seal_close → check if seal is visible
-#     - seal_open → check if seal is opened
-#     - box_scan → check if box and label visible
-#     - warehouse_open → check if warehouse is open
-
-#     Return STRICT JSON:
-#     {{
-#         "status": "OK or ISSUE",
-#         "reason": "short explanation"
-#     }}
-#     """
-
-#     try:
-#         response = vision_llm.invoke([
-#             {
-#                 "role": "user",
-#                 "content": [
-#                     {"type": "text", "text": prompt},
-#                     {
-#                         "type": "image_url",
-#                         "image_url": {
-#                             "url": f"data:image/jpeg;base64,{base64_image}"
-#                         }
-#                     }
-#                 ]
-#             }
-#         ])
-
-#         content = response.content
-
-#         # 🔥 FIX JSON formatting issue
-#         content = content.replace("```json", "").replace("```", "").strip()
-
-#         return json.loads(content)
-
-#     except Exception as e:
-#         return {"status": "ERROR", "reason": str(e)}
-
-
-# # =========================
-# # GOVERNANCE TOOL
-# # =========================
-# @tool
-# def check_governance():
-#     """
-#     Governance validation using OCR + Vision AI
-#     """
-
-#     base_path = Path(r"C:\Users\shash\OneDrive\Desktop\AI_data")
-#     file_path = base_path / "image_data.csv"
-
-#     try:
-#         df = pd.read_csv(file_path)
-#     except Exception as e:
-#         return {"status": "failed", "message": str(e)}
-
-#     df.columns = df.columns.str.strip().str.lower()
-
-#     results = []
-
-#     for _, row in df.iterrows():
-
-#         truck_id = row.get("truck_id", "UNKNOWN")
-#         stage = str(row.get("stage", "")).lower()
-#         image_path = row.get("image_path", "")
-
-#         # 🔥 OCR
-#         text = extract_text(image_path)
-
-#         # 🔥 Vision
-#         vision_result = analyze_image(image_path, stage)
-
-#         vision_status = vision_result.get("status", "ERROR")
-#         vision_reason = vision_result.get("reason", "")
-
-#         # =========================
-#         # HYBRID VALIDATION LOGIC
-#         # =========================
-
-#         if stage == "box_scan":
-
-#             expected_sn = str(row.get("expected_serial", "")).upper()
-
-#             if not expected_sn:
-#                 status = "NO_EXPECTED_SN ⚠️"
-#                 remark = "Expected serial missing"
-
-#             elif expected_sn not in text:
-#                 status = "SERIAL_MISMATCH 🚨"
-#                 remark = f"OCR failed: {expected_sn} not found"
-
-#             elif vision_status == "ISSUE":
-#                 status = "VISUAL_ISSUE 🚨"
-#                 remark = vision_reason
-
-#             else:
-#                 status = "OK ✅"
-#                 remark = "Serial + box verified"
-
-#         elif stage == "loading":
-
-#             if vision_status == "ISSUE":
-#                 status = "NO_TRUCK 🚨"
-#                 remark = vision_reason
-#             else:
-#                 status = "OK ✅"
-#                 remark = "Truck detected"
-
-#         elif stage == "seal_close":
-
-#             if vision_status == "ISSUE" and "SEAL" not in text:
-#                 status = "SEAL_MISSING 🚨"
-#                 remark = "Seal not detected (OCR + Vision)"
-#             else:
-#                 status = "OK ✅"
-#                 remark = "Seal verified"
-
-#         elif stage == "seal_open":
-
-#             if vision_status == "ISSUE":
-#                 status = "NOT_OPENED 🚨"
-#                 remark = vision_reason
-#             else:
-#                 status = "OK ✅"
-#                 remark = "Seal opened"
-
-#         elif stage == "warehouse_open":
-
-#             if vision_status == "ISSUE":
-#                 status = "NOT_OPENED 🚨"
-#                 remark = vision_reason
-#             else:
-#                 status = "OK ✅"
-#                 remark = "Warehouse opened"
-
-#         else:
-#             status = "UNKNOWN ⚠️"
-#             remark = f"Stage '{stage}' not configured"
-
-#         results.append({
-#             "truck_id": truck_id,
-#             "stage": stage,
-#             "status": status,
-#             "remark": remark
-#         })
-
-#     return {
-#         "status": "success",
-#         "governance": results[:25]
-#     }
-
 # import pytesseract
 # import cv2
 # import numpy as np
@@ -224,7 +8,6 @@
 # from langchain_core.tools import tool
 # from langchain_openai import ChatOpenAI
 
-# # 🔥 Vision model
 # vision_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
@@ -240,7 +23,6 @@
 #         gray = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
 
 #         text = pytesseract.image_to_string(gray)
-
 #         return text.upper()
 
 #     except Exception:
@@ -248,35 +30,34 @@
 
 
 # # =========================
-# # BASE64 ENCODE
+# # BASE64
 # # =========================
 # def encode_bytes(image_bytes):
 #     return base64.b64encode(image_bytes).decode("utf-8")
 
 
 # # =========================
-# # VISION (IMAGE ANALYSIS)
+# # VISION
 # # =========================
 # def analyze_image_bytes(image_bytes, stage):
 
 #     base64_image = encode_bytes(image_bytes)
 
 #     prompt = f"""
-# You are a supply chain audit AI.
+# You are a STRICT audit AI.
 
-# Analyze the image for stage: {stage}
+# Check image for stage: {stage}
 
-# Rules:
-# - loading → check if truck is present
-# - seal_close → check if seal is visible
-# - seal_open → check if seal is opened
-# - box_scan → check if box and label visible
-# - warehouse_open → check if warehouse is open
+# IMPORTANT RULES:
+# - If truck is NOT clearly visible → return ISSUE
+# - If unsure → return ISSUE
+# - Do NOT guess
+# - Do NOT assume
 
-# Return STRICT JSON:
+# Return ONLY JSON:
 # {{
-#     "status": "OK or ISSUE",
-#     "reason": "short explanation"
+#   "status": "OK or ISSUE",
+#   "reason": "what exactly you saw"
 # }}
 # """
 
@@ -304,111 +85,65 @@
 
 
 # # =========================
-# # GOVERNANCE TOOL
+# # GOVERNANCE TOOL (FINAL)
 # # =========================
 # @tool
-# def check_governance(data: dict):
+# def check_governance(image: bytes, stage: str = "loading"):
+#     """
+#     Governance check using uploaded image
+#     """
 
-#     input_data = data.get("images", [])
+#     if not image:
+#         return {"status": "failed", "message": "No image provided"}
 
-#     if not input_data:
-#         return {"status": "failed", "message": "No image data provided"}
+#     # OCR
+#     text = extract_text_from_bytes(image)
 
-#     results = []
+#     # Vision
+#     vision = analyze_image_bytes(image, stage)
 
-#     for row in input_data:
+#     vision_status = vision.get("status", "ERROR")
+#     vision_reason = vision.get("reason", "")
 
-#         truck_id = row.get("truck_id", "UNKNOWN")
-#         stage = str(row.get("stage", "")).lower()
-#         image_bytes = row.get("image_bytes")
-
-#         if not image_bytes:
-#             continue
-
-#         # 🔥 OCR (DIRECT FROM BYTES)
-#         text = extract_text_from_bytes(image_bytes)
-
-#         # 🔥 VISION (DIRECT FROM BYTES)
-#         vision_result = analyze_image_bytes(image_bytes, stage)
-
-#         vision_status = vision_result.get("status", "ERROR")
-#         vision_reason = vision_result.get("reason", "")
-
-#         # =========================
-#         # VALIDATION LOGIC
-#         # =========================
-
-#         if stage == "box_scan":
-
-#             expected_sn = str(row.get("expected_serial", "")).upper()
-
-#             if not expected_sn:
-#                 status = "NO_EXPECTED_SN ⚠️"
-#                 remark = "Expected serial missing"
-
-#             elif expected_sn not in text:
-#                 status = "SERIAL_MISMATCH 🚨"
-#                 remark = f"OCR failed: {expected_sn} not found"
-
-#             elif vision_status == "ISSUE":
-#                 status = "VISUAL_ISSUE 🚨"
-#                 remark = vision_reason
-
-#             else:
-#                 status = "OK ✅"
-#                 remark = "Serial + box verified"
-
-#         elif stage == "loading":
-
-#             if vision_status == "ISSUE":
-#                 status = "NO_TRUCK 🚨"
-#                 remark = vision_reason
-#             else:
-#                 status = "OK ✅"
-#                 remark = "Truck detected"
-
-#         elif stage == "seal_close":
-
-#             if vision_status == "ISSUE" and "SEAL" not in text:
-#                 status = "SEAL_MISSING 🚨"
-#                 remark = "Seal not detected"
-#             else:
-#                 status = "OK ✅"
-#                 remark = "Seal verified"
-
-#         elif stage == "seal_open":
-
-#             if vision_status == "ISSUE":
-#                 status = "NOT_OPENED 🚨"
-#                 remark = vision_reason
-#             else:
-#                 status = "OK ✅"
-#                 remark = "Seal opened"
-
-#         elif stage == "warehouse_open":
-
-#             if vision_status == "ISSUE":
-#                 status = "NOT_OPENED 🚨"
-#                 remark = vision_reason
-#             else:
-#                 status = "OK ✅"
-#                 remark = "Warehouse opened"
-
+#     # =========================
+#     # SIMPLE VALIDATION
+#     # =========================
+#     if stage == "loading":
+#         if vision_status == "ISSUE":
+#             status = "NO_TRUCK 🚨"
+#             remark = vision_reason
+#         elif "truck" not in vision_reason.lower():
+#             status = "SUSPECT ⚠️"
+#             remark = "Model unsure about truck presence"
 #         else:
-#             status = "UNKNOWN ⚠️"
-#             remark = f"Stage '{stage}' not configured"
+#             status = "OK ✅"
+#             remark = "Truck clearly detected"
 
-#         results.append({
-#             "truck_id": truck_id,
-#             "stage": stage,
-#             "status": status,
-#             "remark": remark
-#         })
+#     elif stage == "seal_close":
+#         if vision_status == "ISSUE" and "SEAL" not in text:
+#             status = "SEAL_MISSING 🚨"
+#             remark = "Seal not detected"
+#         else:
+#             status = "OK ✅"
+#             remark = "Seal verified"
+
+#     else:
+#         status = vision_status
+#         remark = vision_reason
 
 #     return {
 #         "status": "success",
-#         "governance": results[:25]
+#         "governance": [
+#             {
+#                 "stage": stage,
+#                 "status": status,
+#                 "remark": remark
+#             }
+#         ]
 #     }
+
+
+
 
 import pytesseract
 import cv2
@@ -429,6 +164,9 @@ def extract_text_from_bytes(image_bytes):
         nparr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
+        if img is None:
+            return ""
+
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         gray = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
 
@@ -447,27 +185,59 @@ def encode_bytes(image_bytes):
 
 
 # =========================
-# VISION
+# VISION (STRICT)
 # =========================
 def analyze_image_bytes(image_bytes, stage):
 
     base64_image = encode_bytes(image_bytes)
 
-    prompt = f"""
-You are a STRICT audit AI.
+    # 🔥 STAGE SPECIFIC PROMPT
+    if stage == "loading":
+        prompt = """
+You are a STRICT compliance AI.
 
+Check:
+1. Is a truck clearly visible?
+2. Is a truck number visible?
+
+If unsure → ISSUE
+
+Return JSON:
+{
+ "status": "OK or ISSUE",
+ "truck_present": "YES or NO",
+ "truck_number_visible": "YES or NO",
+ "reason": "what exactly you see"
+}
+"""
+
+    elif stage == "box_scan":
+        prompt = """
+You are a STRICT compliance AI.
+
+Check:
+1. Is a BOX/CARTON visible?
+2. Is a LABEL or BARCODE visible?
+
+If missing → ISSUE
+
+Return JSON:
+{
+ "status": "OK or ISSUE",
+ "box_present": "YES or NO",
+ "label_visible": "YES or NO",
+ "reason": "what exactly you see"
+}
+"""
+
+    else:
+        prompt = f"""
 Check image for stage: {stage}
 
-IMPORTANT RULES:
-- If truck is NOT clearly visible → return ISSUE
-- If unsure → return ISSUE
-- Do NOT guess
-- Do NOT assume
-
-Return ONLY JSON:
+Return JSON:
 {{
-  "status": "OK or ISSUE",
-  "reason": "what exactly you saw"
+ "status": "OK or ISSUE",
+ "reason": "what you see"
 }}
 """
 
@@ -499,47 +269,72 @@ Return ONLY JSON:
 # =========================
 @tool
 def check_governance(image: bytes, stage: str = "loading"):
-    """
-    Governance check using uploaded image
-    """
 
     if not image:
         return {"status": "failed", "message": "No image provided"}
 
-    # OCR
+    # 🔥 OCR
     text = extract_text_from_bytes(image)
 
-    # Vision
+    # 🔥 Vision
     vision = analyze_image_bytes(image, stage)
 
     vision_status = vision.get("status", "ERROR")
-    vision_reason = vision.get("reason", "")
+    reason = vision.get("reason", "")
 
     # =========================
-    # SIMPLE VALIDATION
+    # OCR CHECK (NUMBER / LABEL)
     # =========================
+    has_numbers = any(char.isdigit() for char in text)
+
+    # =========================
+    # FINAL COMPLIANCE LOGIC
+    # =========================
+
+    # 🚚 LOADING
     if stage == "loading":
+
         if vision_status == "ISSUE":
             status = "NO_TRUCK 🚨"
-            remark = vision_reason
-        elif "truck" not in vision_reason.lower():
-            status = "SUSPECT ⚠️"
-            remark = "Model unsure about truck presence"
-        else:
-            status = "OK ✅"
-            remark = "Truck clearly detected"
+            remark = reason
 
+        elif not has_numbers:
+            status = "NO_TRUCK_NUMBER ⚠️"
+            remark = "Truck present but number missing"
+
+        else:
+            status = "COMPLIANT ✅"
+            remark = "Truck + number verified"
+
+    # 📦 BOX SCAN
+    elif stage == "box_scan":
+
+        if vision_status == "ISSUE":
+            status = "NO_BOX 🚨"
+            remark = reason
+
+        elif len(text.strip()) < 5:
+            status = "NO_LABEL 🚨"
+            remark = "Label / barcode not readable"
+
+        else:
+            status = "COMPLIANT ✅"
+            remark = "Box + label verified"
+
+    # 🔐 SEAL
     elif stage == "seal_close":
+
         if vision_status == "ISSUE" and "SEAL" not in text:
             status = "SEAL_MISSING 🚨"
             remark = "Seal not detected"
+
         else:
-            status = "OK ✅"
+            status = "COMPLIANT ✅"
             remark = "Seal verified"
 
     else:
         status = vision_status
-        remark = vision_reason
+        remark = reason
 
     return {
         "status": "success",
@@ -547,7 +342,8 @@ def check_governance(image: bytes, stage: str = "loading"):
             {
                 "stage": stage,
                 "status": status,
-                "remark": remark
+                "remark": remark,
+                "ocr_sample": text[:50]
             }
         ]
     }
