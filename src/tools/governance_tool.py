@@ -269,6 +269,13 @@ Return JSON:
 # =========================
 @tool
 def check_governance(image: bytes, stage: str = "loading"):
+    """
+    Compliance governance tool:
+    - Detect truck presence
+    - Detect truck number using OCR
+    - Validate box and label
+    - Return compliance status
+    """
 
     if not image:
         return {"status": "failed", "message": "No image provided"}
