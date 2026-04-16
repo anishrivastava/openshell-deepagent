@@ -100,22 +100,85 @@ User: which trucks are underutilized
 
 #     return intent
 
+# def classify_intent(user_input: str) -> str:
+
+#     user_input_lower = user_input.lower()
+#     if "plant" in user_input_lower and "utilization" in user_input_lower:
+#        return "underutilized_plants"
+#     if any(word in user_input_lower for word in ["truck utilization", "truck efficiency"]):
+#        return "truck_utilization"
+#     if any(word in user_input_lower for word in ["reconcile", "invoice", "billing"]):
+#        return "reconciliation"
+#     if "schedule" in user_input_lower or "truck plan" in user_input_lower:
+#        return "truck_schedule"
+#     if any(word in user_input_lower for word in ["reconcile", "reconciliation", "invoice", "billing", "mismatch"]):
+#         return "reconciliation"
+
+#     if "schedule" in user_input_lower or "truck plan" in user_input_lower:
+#         return "truck_schedule"
+
+#     # =========================
+#     # LLM fallback
+#     # =========================
+#     response = llm.invoke([
+#         SystemMessage(content=INTENT_PROMPT),
+#         HumanMessage(content=user_input)
+#     ])
+
+#     intent = response.content.strip()
+
+#     allowed = {
+#         "run_planning",
+#         "top_dispatch",
+#         "underutilized_plants",
+#         "truck_schedule",
+#         "dispatch_adherence",
+#         "reconciliation",
+#         "governance",
+#         "truck_utilization",
+#         "unknown"
+#     }
+
+#     if intent not in allowed:
+#         return "unknown"
+
+#     return intent    
+
 def classify_intent(user_input: str) -> str:
 
     user_input_lower = user_input.lower()
-    if "plant" in user_input_lower and "utilization" in user_input_lower:
-       return "underutilized_plants"
-    if any(word in user_input_lower for word in ["truck utilization", "truck efficiency"]):
-       return "truck_utilization"
-    if any(word in user_input_lower for word in ["reconcile", "invoice", "billing"]):
-       return "reconciliation"
-    if "schedule" in user_input_lower or "truck plan" in user_input_lower:
-       return "truck_schedule"
-    if any(word in user_input_lower for word in ["reconcile", "reconciliation", "invoice", "billing", "mismatch"]):
-        return "reconciliation"
 
+    # 🔥 HARD RULES (FAST + ACCURATE)
+
+    # Plant Utilization
+    if "plant" in user_input_lower and "utilization" in user_input_lower:
+        return "underutilized_plants"
+
+    # Truck Utilization
+    if any(word in user_input_lower for word in [
+        "truck utilization", "truck efficiency", "utilization report", "capacity usage"
+    ]):
+        return "truck_utilization"
+
+    # Truck Plan
     if "schedule" in user_input_lower or "truck plan" in user_input_lower:
         return "truck_schedule"
+
+    # Adherence
+    if any(word in user_input_lower for word in ["adherence", "delay", "tracking"]):
+        return "dispatch_adherence"
+
+    # Finance
+    if any(word in user_input_lower for word in [
+        "reconcile", "reconciliation", "invoice", "billing", "mismatch"
+    ]):
+        return "reconciliation"
+
+    # Governance 🔥 (ADD THIS)
+    if any(word in user_input_lower for word in [
+        "governance", "check image", "validate", "compliance", "proof"
+    ]):
+        return "governance"
 
     # =========================
     # LLM fallback
@@ -142,4 +205,4 @@ def classify_intent(user_input: str) -> str:
     if intent not in allowed:
         return "unknown"
 
-    return intent    
+    return intent
