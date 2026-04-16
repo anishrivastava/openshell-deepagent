@@ -454,12 +454,20 @@ def analyze_image_bytes(image_bytes, stage):
     base64_image = encode_bytes(image_bytes)
 
     prompt = f"""
-Analyze image for stage: {stage}
+You are a STRICT audit AI.
 
-Return STRICT JSON:
+Check image for stage: {stage}
+
+IMPORTANT RULES:
+- If truck is NOT clearly visible → return ISSUE
+- If unsure → return ISSUE
+- Do NOT guess
+- Do NOT assume
+
+Return ONLY JSON:
 {{
   "status": "OK or ISSUE",
-  "reason": "short explanation"
+  "reason": "what exactly you saw"
 }}
 """
 
@@ -514,9 +522,12 @@ def check_governance(image: bytes, stage: str = "loading"):
         if vision_status == "ISSUE":
             status = "NO_TRUCK 🚨"
             remark = vision_reason
+        elif "truck" not in vision_reason.lower():
+            status = "SUSPECT ⚠️"
+            remark = "Model unsure about truck presence"
         else:
             status = "OK ✅"
-            remark = "Truck detected"
+            remark = "Truck clearly detected"
 
     elif stage == "seal_close":
         if vision_status == "ISSUE" and "SEAL" not in text:
