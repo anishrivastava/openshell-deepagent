@@ -116,7 +116,7 @@
 
 #     except Exception as e:
 #         return {"error": str(e)}
-
+print("🔥 NEW API VERSION LOADED 🔥")
 from fastapi import FastAPI, UploadFile, File, Form
 from pydantic import BaseModel
 import pandas as pd
@@ -174,7 +174,7 @@ def ask_agent(request: QueryRequest):
 # =========================
 # MULTI-FILE ENDPOINT
 # =========================
-@app.post("/process")
+@app.post("/process-v2")   # 👈 CHANGE NAME
 async def process_agent(
     query: str = Form(...),
     files: list[UploadFile] = File(...)
