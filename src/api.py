@@ -177,7 +177,7 @@ def ask_agent(request: QueryRequest):
 @app.post("/process")
 async def process_agent(
     query: str = Form(...),
-    files: List[UploadFile] = File(...)
+    files: list[UploadFile] = File(...)
 ):
 
     try:
@@ -234,7 +234,7 @@ async def process_agent(
 
             # -------------------------
             # PDF (INVOICE)
-            # -------------------------
+            # -------------------------6
             elif filename.endswith(".pdf"):
                 invoice_bytes = await file.read()
 
