@@ -23,7 +23,8 @@ class AgentState(TypedDict):
     intent: str
     result: str
     data: dict
-    image: bytes  # 🔥 ADD THIS# 🔥 NEW (store truck plan)
+    image: bytes
+    invoice: bytes  # 🔥 ADD THIS# 🔥 NEW (store truck plan)
 
 
 # =========================
@@ -201,10 +202,35 @@ def truck_utilization_node(state: AgentState):
 
 #     return {"result": "Reconciliation Report:\n" + "\n".join(lines)}
 
+# def reconciliation_node(state: AgentState):
+
+#     result = run_reconciliation.invoke({
+#     "data": state.get("data"),
+#     "invoice": state.get("invoice")
+# })
+
+#     if result["status"] != "success":
+#         return {"result": result["message"]}
+
+#     lines = []
+#     for row in result["reconciliation"]:
+#         lines.append(
+#             f"{row['invoice_id']} | {row['status']} | {row['remark']}"
+#         )
+
+#     return {
+#         "result": "Reconciliation Report:\n" + "\n".join(lines)
+#     }
+
+
 def reconciliation_node(state: AgentState):
 
     result = run_reconciliation.invoke({
-        "data": state.get("finance_data")   # 🔥 FIX
+        "data": {
+            "po": state.get("data", {}).get("po"),
+            "dispatch": state.get("data", {}).get("dispatch")
+        },
+        "invoice": state.get("invoice")
     })
 
     if result["status"] != "success":
@@ -217,9 +243,8 @@ def reconciliation_node(state: AgentState):
         )
 
     return {
-        "result": "Reconciliation Report:\n" + "\n".join(lines)
+        "result": "Hi 👋, here is your reconciliation report:\n\n" + "\n".join(lines)
     }
-
 # def governance_node(state: AgentState):
 #     result = check_governance.invoke({
 #     "image": state.get("image"),

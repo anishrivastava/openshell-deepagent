@@ -10,8 +10,9 @@
 
 # app = FastAPI()
 
+
 # # =========================
-# # REQUEST SCHEMA (TEXT ONLY)
+# # REQUEST SCHEMA
 # # =========================
 # class QueryRequest(BaseModel):
 #     query: str
@@ -39,7 +40,9 @@
 #         result = graph.invoke({
 #             "user_input": user_input,
 #             "intent": intent,
-#             "data": []
+#             "data": None,
+#             "image": None,
+#             "result": ""
 #         })
 
 #         return {
@@ -53,7 +56,7 @@
 
 
 # # =========================
-# # MULTI INPUT ENDPOINT (🔥 MAIN)
+# # MULTI INPUT ENDPOINT
 # # =========================
 # @app.post("/process")
 # async def process_agent(
@@ -72,13 +75,26 @@
 #         # =========================
 #         if file:
 
-#             # CSV CASE
-#             if file.filename.endswith(".csv"):
+#             filename = file.filename.lower()
+
+#             # CSV
+#             if filename.endswith(".csv"):
 #                 df = pd.read_csv(file.file)
 #                 data = df.to_dict(orient="records")
 
-#             # IMAGE CASE
-#             elif file.filename.lower().endswith((".png", ".jpg", ".jpeg")):
+#             # EXCEL (🔥 IMPORTANT FOR YOU)
+#             elif filename.endswith(".xlsx"):
+#                 excel = pd.ExcelFile(file.file)
+#                 data = {}
+#                 if "dispatch_plan" in excel.sheet_names:
+#                     df_dispatch = pd.read_excel(excel, "dispatch_plan")
+#                     data["dispatch"] = df_dispatch.to_dict(orient="records")
+#                     if "capacity_utilization" in excel.sheet_names:
+#                         df_util = pd.read_excel(excel, "capacity_utilization")
+#                         data["utilization"] = df_util.to_dict(orient="records")
+
+#             # IMAGE
+#             elif filename.endswith((".png", ".jpg", ".jpeg")):
 #                 image_bytes = await file.read()
 
 #         # =========================
@@ -104,7 +120,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from pydantic import BaseModel
 import pandas as pd
-from typing import Optional
+from typing import List
 
 from src.graph.graph import graph
 from src.intent_classifier import classify_intent
@@ -133,21 +149,20 @@ def home():
 @app.post("/ask")
 def ask_agent(request: QueryRequest):
 
-    user_input = request.query
-
     try:
-        intent = classify_intent(user_input)
+        intent = classify_intent(request.query)
 
         result = graph.invoke({
-            "user_input": user_input,
+            "user_input": request.query,
             "intent": intent,
             "data": None,
             "image": None,
+            "invoice": None,
             "result": ""
         })
 
         return {
-            "query": user_input,
+            "query": request.query,
             "intent": intent,
             "response": result.get("result", "No result generated")
         }
@@ -157,46 +172,71 @@ def ask_agent(request: QueryRequest):
 
 
 # =========================
-# MULTI INPUT ENDPOINT
+# MULTI-FILE ENDPOINT
 # =========================
 @app.post("/process")
 async def process_agent(
     query: str = Form(...),
-    file: Optional[UploadFile] = File(None)
+    files: List[UploadFile] = File(...)
 ):
 
     try:
         intent = classify_intent(query)
 
-        data = None
+        data = {}
         image_bytes = None
+        invoice_bytes = None
 
         # =========================
-        # FILE HANDLING
+        # MULTI FILE HANDLING
         # =========================
-        if file:
+        for file in files:
 
             filename = file.filename.lower()
 
-            # CSV
-            if filename.endswith(".csv"):
+            # -------------------------
+            # PO CSV
+            # -------------------------
+            if "po" in filename and filename.endswith(".csv"):
                 df = pd.read_csv(file.file)
-                data = df.to_dict(orient="records")
+                data["po"] = df.to_dict(orient="records")
 
-            # EXCEL (🔥 IMPORTANT FOR YOU)
+            # -------------------------
+            # DISPATCH CSV
+            # -------------------------
+            elif "dispatch" in filename and filename.endswith(".csv"):
+                df = pd.read_csv(file.file)
+                data["dispatch"] = df.to_dict(orient="records")
+
+            # -------------------------
+            # EXCEL (OPTIONAL)
+            # -------------------------
             elif filename.endswith(".xlsx"):
                 excel = pd.ExcelFile(file.file)
-                data = {}
+
                 if "dispatch_plan" in excel.sheet_names:
                     df_dispatch = pd.read_excel(excel, "dispatch_plan")
                     data["dispatch"] = df_dispatch.to_dict(orient="records")
-                    if "capacity_utilization" in excel.sheet_names:
-                        df_util = pd.read_excel(excel, "capacity_utilization")
-                        data["utilization"] = df_util.to_dict(orient="records")
 
-            # IMAGE
+                if "capacity_utilization" in excel.sheet_names:
+                    df_util = pd.read_excel(excel, "capacity_utilization")
+                    data["utilization"] = df_util.to_dict(orient="records")
+
+                if "po" in excel.sheet_names:
+                    df_po = pd.read_excel(excel, "po")
+                    data["po"] = df_po.to_dict(orient="records")
+
+            # -------------------------
+            # IMAGE (GOVERNANCE)
+            # -------------------------
             elif filename.endswith((".png", ".jpg", ".jpeg")):
                 image_bytes = await file.read()
+
+            # -------------------------
+            # PDF (INVOICE)
+            # -------------------------
+            elif filename.endswith(".pdf"):
+                invoice_bytes = await file.read()
 
         # =========================
         # GRAPH CALL
@@ -206,6 +246,7 @@ async def process_agent(
             "intent": intent,
             "data": data,
             "image": image_bytes,
+            "invoice": invoice_bytes,
             "result": ""
         })
 
@@ -217,4 +258,3 @@ async def process_agent(
 
     except Exception as e:
         return {"error": str(e)}
-
