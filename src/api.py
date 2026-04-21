@@ -122,8 +122,8 @@ from pydantic import BaseModel
 import pandas as pd
 from typing import List
 
-from src.graph.graph import graph
-from src.intent_classifier import classify_intent
+from graph.graph import graph
+from intent_classifier import classify_intent
 
 app = FastAPI()
 
@@ -258,3 +258,143 @@ async def process_agent(
 
     except Exception as e:
         return {"error": str(e)}
+
+# Truck Utilization Template Download Logic
+
+from fastapi.responses import StreamingResponse
+from io import BytesIO
+import pandas as pd
+
+
+@app.get("/download-template/truck-utilization")
+def download_truck_utilization_template():
+
+    # =========================
+    # TEMPLATE DATA
+    # =========================
+    template_df = pd.DataFrame([
+        {
+            "plant": "Bangalore Plant",
+            "city": "Hyderabad",
+            "truck": "16MT",
+            "trips": 2,
+            "capacity": 1600,
+            "utilization": 75,
+            "cases": 1200
+        }
+    ])
+
+    # =========================
+    # DATA DICTIONARY
+    # =========================
+    dictionary_df = pd.DataFrame([
+        {
+            "column_name": "plant",
+            "description": "Manufacturing plant or warehouse from where the shipment is dispatched",
+            "example": "Bangalore Plant",
+            "mandatory": "Yes",
+            "business_meaning": "Used to identify the shipment origin and analyze dispatch performance by plant"
+        },
+        {
+            "column_name": "city",
+            "description": "Destination city where the shipment is being delivered",
+            "example": "Hyderabad",
+            "mandatory": "Yes",
+            "business_meaning": "Used to identify route destination and compare truck utilization across cities"
+        },
+        {
+            "column_name": "truck",
+            "description": "Truck type or vehicle category used for the shipment",
+            "example": "16MT",
+            "mandatory": "Yes",
+            "business_meaning": "Used to estimate truck carrying capacity and identify whether the correct truck size is being used"
+        },
+        {
+            "column_name": "trips",
+            "description": "Number of trips made for the same route and shipment",
+            "example": "2",
+            "mandatory": "Yes",
+            "business_meaning": "Used to calculate average load per trip and identify over-splitting of shipments"
+            
+        },
+        {
+            "column_name": "cases",
+            "description": "Total number of product cases shipped across all trips",
+            "example": "1200",
+            "mandatory": "Yes",
+            "business_meaning": "Used to calculate average load carried by the truck and overall utilization percentage"
+        },
+        {
+            "column_name": "capacity",
+            "description": "Maximum truck carrying capacity in number of cases",
+            "example": "1600",
+            "mandatory": "No",
+            "business_meaning": "If not provided, the system automatically derives capacity from truck type"
+        },
+        {
+            "column_name": "utilization",
+            "description": "Percentage of truck capacity actually used",
+            "example": "75",
+            "mandatory": "No",
+            "business_meaning": "Automatically calculated by the system to identify underutilized or overloaded trucks"
+        }
+    ])
+
+    # =========================
+    # BUSINESS CONTEXT
+    # =========================
+    context_df = pd.DataFrame([
+        {
+            "section": "Agent Name",
+            "details": "Truck Utilization Agent"
+        },
+        {
+            "section": "Objective",
+            "details": "Analyze truck-level loading efficiency and identify routes where trucks are being underutilized"
+        },
+        {
+            "section": "Business Problem",
+            "details": "Many logistics operations use larger trucks than required, resulting in unused capacity, higher transportation cost, and inefficient route planning"
+        },
+        {
+            "section": "How It Works",
+            "details": "The agent compares total shipped cases against truck carrying capacity to calculate utilization percentage for every route"
+        },
+        {
+            "section": "Required Inputs",
+            "details": "plant, city, truck, trips, cases"
+        },
+        {
+            "section": "System Generated Outputs",
+            "details": "capacity (if not provided), utilization percentage, utilization status, route summary, and optimization alert"
+        },
+        {
+            "section": "Business Value",
+            "details": "Helps reduce freight cost, optimize truck selection, minimize empty space, and improve dispatch planning efficiency"
+        },
+        {
+            "section": "Typical Recommendation",
+            "details": "If a 16MT truck is carrying only 40 percent of its capacity, the system may recommend switching to a smaller truck such as 9MT"
+        }
+    ])
+
+    # =========================
+    # CREATE EXCEL FILE
+    # =========================
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        template_df.to_excel(writer, sheet_name="Template", index=False)
+        dictionary_df.to_excel(writer, sheet_name="Description", index=False)
+        context_df.to_excel(writer, sheet_name="Business Context", index=False)
+
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": "attachment; filename=truck_utilization_template.xlsx"
+        }
+    )
+
