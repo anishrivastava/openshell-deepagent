@@ -285,7 +285,7 @@
 
 import pandas as pd
 from langchain_core.tools import tool
-from tools.finance.invoice_parser import process_invoice
+from src.tools.finance.invoice_parser import process_invoice
 
 
 @tool

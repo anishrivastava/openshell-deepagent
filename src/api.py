@@ -7,10 +7,10 @@ from typing import Dict, Any
 import json
 from langchain_openai import ChatOpenAI
 
-from tools.dispatch.truck_utilization_tool import check_truck_utilization
+from src.tools.dispatch.truck_utilization_tool import check_truck_utilization
 
-from graph.graph import graph
-from intent_classifier import classify_intent
+from src.graph.graph import graph
+from src.intent_classifier import classify_intent
 
 app = FastAPI()
 
