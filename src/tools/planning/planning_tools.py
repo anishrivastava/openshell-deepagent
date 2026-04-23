@@ -1,5 +1,5 @@
 from langchain.tools import tool
-from tools.planning.planning_runner import run_planning_pipeline
+from src.tools.planning.planning_runner import run_planning_pipeline
 
 
 @tool
