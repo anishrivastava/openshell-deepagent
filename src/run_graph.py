@@ -407,6 +407,9 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from datetime import datetime
 import json
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # =========================
 # LLM SETUP
 # =========================

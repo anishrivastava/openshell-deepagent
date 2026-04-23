@@ -2,17 +2,17 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, END
 
 # ✅ Intent
-from src.intent_classifier import classify_intent
+from intent_classifier import classify_intent
 
 # ✅ Tools
-from src.tools.planning.planning_tools import run_planning_tool
-from src.tools.dispatch.dispatch_tools import get_top_5_cities_by_dispatch
-from src.tools.utilization.utilization_tools import get_underutilized_plants
-from src.tools.planning.truck_scheduling_tool import create_truck_schedule
-from src.tools.utilization.adherence_tool import check_dispatch_adherence
-from src.tools.dispatch.truck_utilization_tool import check_truck_utilization
-from src.tools.finance.reconcilation import run_reconciliation
-from src.tools.governance_tool import check_governance
+from tools.planning.planning_tools import run_planning_tool
+from tools.dispatch.dispatch_tools import get_top_5_cities_by_dispatch
+from tools.utilization.utilization_tools import get_underutilized_plants
+from tools.planning.truck_scheduling_tool import create_truck_schedule
+from tools.utilization.adherence_tool import check_dispatch_adherence
+from tools.dispatch.truck_utilization_tool import check_truck_utilization
+from tools.finance.reconcilation import run_reconciliation
+from tools.governance_tool import check_governance
 
 
 # =========================
