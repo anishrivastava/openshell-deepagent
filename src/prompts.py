@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # """Prompt templates for the OpenShell Deep Agent."""
 
 # AGENT_INSTRUCTIONS = """You are a Deep Agent with access to a secure, policy-governed sandbox for code execution and file management.
@@ -72,5 +73,4 @@ Advanced capability:
 - If no tool fits → generate Python code
 
 Always prefer tool-based execution over guessing.
-
 """

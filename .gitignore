@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .venv/
 venv/
 .env
@@ -6,3 +7,15 @@ __pycache__/
 *.pyc
 .DS_Store
 openshell_deep_agent.egg-info
+=======
+.venv/
+venv/
+.env
+.langgraph_api/
+__pycache__/
+*.pyc
+.DS_Store
+openshell_deep_agent.egg-info,
+
+ we have 4 to 5 skills how dsecriptiv e that skills, fetch that data fror that depo , once that allocation is done next ay what i smy adhere nce awhat is truck , descripuie  comboionantion ,untill or unless we have caapabilityy  tro dynamically generate code , 
+>>>>>>> 0a23c5d (added context-driven truck scheduling)
