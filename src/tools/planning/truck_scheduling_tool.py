@@ -190,8 +190,17 @@ def generate_rules(user_query: str):
 # =========================
 # MAIN TOOL
 # =========================
+
 @tool
 def create_truck_schedule(data: dict):
+    """
+    Generate truck schedule from dispatch data.
+
+    Supports:
+    - Dynamic truck type override
+    - Custom start date
+    - User-defined scheduling rules
+    """
 
     # =========================
     # VALIDATION
