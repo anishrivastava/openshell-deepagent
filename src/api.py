@@ -192,6 +192,8 @@ async def process_agent(
         # =========================
         # GRAPH CALL
         # =========================
+        
+        data["query"] = query
         result = graph.invoke({
             "user_input": query,
             "intent": intent,
