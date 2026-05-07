@@ -1,21 +1,29 @@
-SKILL: TRUCK_SCHEDULING
+# Truck Scheduling Knowledge
 
-DEFAULTS:
-start_date: 2025-10-01
-default_truck: 9MT
+## Business Rules
+- 9MT trucks are used for smaller loads
+- 16MT trucks are used for higher loads
+- Truck type should be consistent (no "9 mt", always "9MT")
 
-RULES:
-- if cases_per_truck > 1000 → 16MT else 9MT
+## Logic
+- cases_per_truck = total_cases / trips
+- If trips = 0 → ignore row
 
-ROUTE_OVERRIDES:
-Delhi: 16MT
-Mumbai: 9MT
+## Data Rules
+- truck column contains truck type
+- cases column contains total units
+- plant is source
+- destination is target
 
-DATE_LOGIC:
-- start from start_date
-- increment 1 day per trip
+## Code Examples
+- Total cases for 9MT:
+  df[df["truck"]=="9MT"]["cases"].sum()
 
-USER_CAN_OVERRIDE:
-- start_date
-- route rules
-- truck logic
+- Group by truck:
+  df.groupby("truck")["cases"].sum()
+
+## Edge Cases
+- Normalize truck values:
+  df["truck"] = df["truck"].str.upper().str.replace(" ", "")
+
+- If no matching rows → return 0
