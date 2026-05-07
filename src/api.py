@@ -545,6 +545,9 @@ async def truck_chat(
 # =========================
 # 📊 UTILIZATION CHAT
 # =========================
+# =========================
+# 📊 UTILIZATION CHAT
+# =========================
 @app.post("/utilization-chat")
 async def utilization_chat(
     query: str = Form(...),
@@ -562,6 +565,31 @@ async def utilization_chat(
     data = session["data"]
 
     # =========================
+    # MODIFY OUTPUT
+    # =========================
+    if "modify" in query.lower():
+
+        updated = modify_output(
+            session["last_output"],
+            query
+        )
+
+        session["last_output"] = updated
+        append_history("utilization_chat", updated)
+
+        chat_response = generate_chat_response(
+            user_query=query,
+            tool_output=updated,
+            history=session["history"],
+            skill="truck utilization"
+        )
+
+        return {
+            "response": chat_response,
+            "data": updated
+        }
+
+    # =========================
     # GENERATE UTILIZATION
     # =========================
     result = check_truck_utilization.invoke({
@@ -575,7 +603,9 @@ async def utilization_chat(
     session["last_output"] = output
     append_history("utilization_chat", output)
 
-    # 🔥 HUMAN RESPONSE
+    # =========================
+    # AI RESPONSE
+    # =========================
     chat_response = generate_chat_response(
         user_query=query,
         tool_output=output,
@@ -587,8 +617,6 @@ async def utilization_chat(
         "response": chat_response,
         "data": output
     }
-
-
 # =========================
 # 📦 ADHERENCE CHAT
 # =========================
