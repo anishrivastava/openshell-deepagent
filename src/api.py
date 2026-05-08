@@ -1,397 +1,278 @@
-# from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+# from fastapi import FastAPI, UploadFile, File, Form
 # from pydantic import BaseModel
 # import pandas as pd
-# from typing import List, Dict, Any
-# from langchain_openai import ChatOpenAI
-# from src.llama.index import query_engine
 
+# # =========================
+# # TOOLS
+# # =========================
+# from src.tools.planning.truck_scheduling_tool import create_truck_schedule
 # from src.tools.dispatch.truck_utilization_tool import check_truck_utilization
-# from src.graph.graph import graph
-# from src.intent_classifier import classify_intent
+# from src.tools.utilization.adherence_tool import check_dispatch_adherence
+
+# # =========================
+# # UTILS
+# # =========================
+# from src.utils.modifier import modify_output
+# from src.chat.chat_agent import generate_chat_response
+
+# # =========================
+# # SESSION STORE
+# # =========================
+# from src.sessions.store import (
+#     get_session,
+#     append_history,
+#     reset_session
+# )
 
 # app = FastAPI()
 
-# llm = ChatOpenAI(
-#     model="gpt-4o-mini",
-#     temperature=0
-# )
-
-# print("🔥 NEW API VERSION LOADED 🔥")
-
-# # =========================
-# # 🔥 CHAT MEMORY (SESSION BASED)
-# # =========================
-# chat_sessions = {}
+# print("🔥 SKILL CHAT API LOADED 🔥")
 
 
 # # =========================
-# # 🔥 DYNAMIC QUERY ENGINE + MEMORY
+# # REQUEST MODEL
 # # =========================
-# def run_dynamic_query(data, user_query, session_id="default"):
-
-#     import pandas as pd
-#     import re
-
-#     if not data or "dispatch" not in data:
-#         return "No data available"
-
-#     df = pd.DataFrame(data["dispatch"])
-#     df.columns = df.columns.str.lower()
-
-#     # 🔥 NORMALIZE
-#     if "truck" in df.columns:
-#         df["truck"] = df["truck"].astype(str).str.upper().str.replace(" ", "")
-
-#     # =========================================================
-#     # 🔥 RULE-BASED ENGINE (FAST + SAFE)
-#     # =========================================================
-
-#     query_lower = user_query.lower()
-
-#     # 🔹 MULTI TRUCK (9MT + 16MT)
-#     truck_matches = re.findall(r'(\d+\s*mt)', query_lower)
-#     truck_list = [t.replace(" ", "").upper() for t in truck_matches]
-
-#     # 🔹 DESTINATION (masked id)
-#     dest_match = re.search(r'for\s+([a-zA-Z0-9]+)', user_query)
-
-#     # ✅ CASE 1: MULTIPLE TRUCKS
-#     if len(truck_list) >= 2:
-#         return f"Total result: {df[df['truck'].isin(truck_list)]['cases'].sum()}"
-
-#     # ✅ CASE 2: DESTINATION + TRUCK
-#     if len(truck_list) == 1 and dest_match:
-#         truck = truck_list[0]
-#         destination = dest_match.group(1)
-
-#         if "destination" in df.columns:
-#             result = df[
-#                 (df["truck"] == truck) &
-#                 (df["destination"] == destination)
-#             ]["cases"].sum()
-
-#             return f"Total result: {result}"
-
-#     # =========================================================
-#     # 🔥 LLAMAINDEX + LLM FALLBACK
-#     # =========================================================
-
-#     context = str(query_engine.query(user_query))
-
-#     prompt = f"""
-# You are a Python data analyst.
-
-# STRICTLY follow the business context below.
-
-# Business Context:
-# {context}
-
-# DataFrame name: df
-# Columns: {list(df.columns)}
-
-# RULES:
-# - Return ONLY valid Python code
-# - No explanation
-# - Single expression only
-# - Use .isin() for multiple values
-# - Never use 'and' for filtering
-# - Always valid pandas syntax
-
-# User Query:
-# {user_query}
-# """
-
-#     try:
-#         code = llm.invoke(prompt).content.strip()
-#         code = code.replace("```python", "").replace("```", "").strip()
-
-#         print("🔥 QUERY:", user_query)
-#         print("🔥 CONTEXT:", context)
-#         print("🔥 CODE:", code)
-
-#         # 🔥 FIX AND → OR
-#         if " and " in code and "df[" in code:
-#             code = code.replace(" and ", " | ")
-
-#         result = eval(code, {"df": df, "__builtins__": {}})
-#         return f"Total result: {result}"
-
-#     except Exception as e:
-#         print("❌ BAD CODE:", code)
-
-#         # 🔁 RETRY FIX
-#         try:
-#             retry_prompt = f"""
-# Fix this pandas code.
-
-# Bad Code:
-# {code}
-
-# Rules:
-# - Must be valid pandas syntax
-# - Use .isin() if multiple values
-# - Return only corrected code
-# """
-
-#             fixed_code = llm.invoke(retry_prompt).content.strip()
-#             fixed_code = fixed_code.replace("```python", "").replace("```", "").strip()
-
-#             print("🔁 FIXED CODE:", fixed_code)
-
-#             result = eval(fixed_code, {"df": df})
-#             return f"Total result: {result}"
-
-#         except Exception as e2:
-#             return f"Error: {str(e2)}"
-# # =========================
-# # REQUEST SCHEMA
-# # =========================
-# class QueryRequest(BaseModel):
+# class ChatRequest(BaseModel):
 #     query: str
 
 
-# class SaveConfigRequest(BaseModel):
-#     data: Dict[str, Any]
-#     datatype_config: Dict[str, str]
-#     parameter_config: Dict[str, Any]
-
-
-# class RunAgentRequest(BaseModel):
-#     data: Dict[str, Any]
-#     datatype_config: Dict[str, str]
-#     parameter_config: Dict[str, Any]
+# # =========================
+# # HEALTH
+# # =========================
+# @app.get("/")
+# def home():
+#     return {"message": "Skill Chat API Running 🚀"}
 
 
 # # =========================
 # # HELPERS
 # # =========================
-# def detect_column_type(series):
-#     if pd.api.types.is_integer_dtype(series):
-#         return "integer"
-#     elif pd.api.types.is_float_dtype(series):
-#         return "float"
-#     elif pd.api.types.is_bool_dtype(series):
-#         return "boolean"
-#     elif pd.api.types.is_datetime64_any_dtype(series):
-#         return "datetime"
-#     return "string"
+# def load_excel_data(files):
 
+#     data = {}
 
-# def validate_and_convert_dataframe(df, datatype_config):
-#     errors = []
+#     for file in files:
 
-#     for column, dtype in datatype_config.items():
-#         if column not in df.columns:
-#             continue
+#         filename = file.filename.lower()
 
-#         try:
-#             if dtype == "integer":
-#                 df[column] = pd.to_numeric(df[column], errors="raise").astype(int)
+#         if filename.endswith(".xlsx"):
 
-#             elif dtype == "float":
-#                 df[column] = pd.to_numeric(df[column], errors="raise").astype(float)
+#             excel = pd.ExcelFile(file.file)
 
-#             elif dtype == "datetime":
-#                 df[column] = pd.to_datetime(df[column], errors="raise")
+#             # 🚛 DISPATCH
+#             if "dispatch_plan" in excel.sheet_names:
+#                 df_dispatch = pd.read_excel(excel, "dispatch_plan")
+#                 data["dispatch"] = df_dispatch.to_dict(orient="records")
 
-#             elif dtype == "boolean":
-#                 df[column] = df[column].astype(bool)
+#             # 📊 UTILIZATION
+#             if "capacity_utilization" in excel.sheet_names:
+#                 df_util = pd.read_excel(excel, "capacity_utilization")
+#                 data["utilization"] = df_util.to_dict(orient="records")
 
-#             elif dtype == "string":
-#                 df[column] = df[column].astype(str)
+#             # 📦 PO
+#             if "po" in excel.sheet_names:
+#                 df_po = pd.read_excel(excel, "po")
+#                 data["po"] = df_po.to_dict(orient="records")
 
-#         except Exception:
-#             errors.append(f"Column '{column}' could not be converted to {dtype}")
-
-#     return df, errors
+#     return data
 
 
 # # =========================
-# # HEALTH CHECK
+# # 🚛 TRUCK CHAT
 # # =========================
-# @app.get("/")
-# def home():
-#     return {"message": "AI Agent Running 🚀"}
-
-
-# # =========================
-# # TEXT ONLY
-# # =========================
-# @app.post("/ask")
-# def ask_agent(request: QueryRequest):
-#     try:
-#         intent = classify_intent(request.query)
-
-#         result = graph.invoke({
-#             "user_input": request.query,
-#             "intent": intent,
-#             "data": None,
-#             "image": None,
-#             "invoice": None,
-#             "result": ""
-#         })
-
-#         return {
-#             "query": request.query,
-#             "intent": intent,
-#             "response": result.get("result", "No result generated")
-#         }
-
-#     except Exception as e:
-#         return {"error": str(e)}
-
-
-# # =========================
-# # MAIN ENDPOINT
-# # =========================
-# @app.post("/process-v2")
-# async def process_agent(
+# @app.post("/truck-chat")
+# async def truck_chat(
 #     query: str = Form(...),
-#     files: list[UploadFile] = File(...)
+#     files: list[UploadFile] = File(None)
 # ):
-#     try:
-#         intent = classify_intent(query)
 
-#         data = {}
-#         image_bytes = None
-#         invoice_bytes = None
+#     session = get_session("truck_chat")
 
-#         # FILE HANDLING
-#         for file in files:
-#             filename = file.filename.lower()
+#     # =========================
+#     # LOAD FILE
+#     # =========================
+#     if files:
+#         session["data"] = load_excel_data(files)
 
-#             if "po" in filename and filename.endswith(".csv"):
-#                 df = pd.read_csv(file.file)
-#                 data["po"] = df.to_dict(orient="records")
+#     data = session["data"]
 
-#             elif "dispatch" in filename and filename.endswith(".csv"):
-#                 df = pd.read_csv(file.file)
-#                 data["dispatch"] = df.to_dict(orient="records")
+#     # =========================
+#     # MODIFY OUTPUT
+#     # =========================
+#     if "modify" in query.lower():
 
-#             elif filename.endswith(".xlsx"):
-#                 excel = pd.ExcelFile(file.file)
+#         updated = modify_output(
+#             session["last_output"],
+#             query
+#         )
 
-#                 if "dispatch_plan" in excel.sheet_names:
-#                     df_dispatch = pd.read_excel(excel, "dispatch_plan")
-#                     data["dispatch"] = df_dispatch.to_dict(orient="records")
+#         session["last_output"] = updated
+#         append_history("truck_chat", updated)
 
-#                 if "capacity_utilization" in excel.sheet_names:
-#                     df_util = pd.read_excel(excel, "capacity_utilization")
-#                     data["utilization"] = df_util.to_dict(orient="records")
-
-#                 if "po" in excel.sheet_names:
-#                     df_po = pd.read_excel(excel, "po")
-#                     data["po"] = df_po.to_dict(orient="records")
-
-#             elif filename.endswith((".png", ".jpg", ".jpeg")):
-#                 image_bytes = await file.read()
-
-#             elif filename.endswith(".pdf"):
-#                 invoice_bytes = await file.read()
-
-#         data["query"] = query
-
-#         # 🔥 SESSION ID (for now static, later from frontend)
-#         session_id = "user_1"
-
-#         # 🔥 DYNAMIC + MEMORY
-#         if intent == "unknown" and "dispatch" in data:
-#             dynamic_result = run_dynamic_query(data, query, session_id)
-
-#             return {
-#                 "query": query,
-#                 "intent": "dynamic_query",
-#                 "response": dynamic_result
-#             }
-
-#         # NORMAL FLOW
-#         result = graph.invoke({
-#             "user_input": query,
-#             "intent": intent,
-#             "data": data,
-#             "image": image_bytes,
-#             "invoice": invoice_bytes,
-#             "result": ""
-#         })
+#         chat_response = generate_chat_response(
+#             user_query=query,
+#             tool_output=updated,
+#             history=session["history"],
+#             skill="truck scheduling"
+#         )
 
 #         return {
-#             "query": query,
-#             "intent": intent,
-#             "response": result.get("result", "No output generated")
+#             "response": chat_response,
+#             "data": updated
 #         }
 
-#     except Exception as e:
-#         return {"error": str(e)}
+#     # =========================
+#     # GENERATE SCHEDULE
+#     # =========================
+#     result = create_truck_schedule.invoke({
+#         "data": {
+#             "dispatch": data.get("dispatch", [])
+#         }
+#     })
 
+#     output = result.get("schedule", [])
 
-# # =========================
-# # DOWNLOAD TEMPLATE
-# # =========================
-# from fastapi.responses import StreamingResponse
-# from io import BytesIO
+#     session["last_output"] = output
+#     append_history("truck_chat", output)
 
-
-# @app.get("/download-template/truck-utilization")
-# def download_truck_utilization_template():
-#     template_df = pd.DataFrame([{
-#         "plant": "Bangalore Plant",
-#         "city": "Hyderabad",
-#         "truck": "16MT",
-#         "trips": 2,
-#         "capacity": 1600,
-#         "utilization": 75,
-#         "cases": 1200
-#     }])
-
-#     output = BytesIO()
-
-#     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-#         template_df.to_excel(writer, sheet_name="Template", index=False)
-
-#     output.seek(0)
-
-#     return StreamingResponse(
-#         output,
-#         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-#         headers={"Content-Disposition": "attachment; filename=truck_utilization_template.xlsx"}
+#     # 🔥 HUMAN RESPONSE
+#     chat_response = generate_chat_response(
+#         user_query=query,
+#         tool_output=output,
+#         history=session["history"],
+#         skill="truck scheduling"
 #     )
 
+#     return {
+#         "response": chat_response,
+#         "data": output
+#     }
+
 
 # # =========================
-# # RUN AGENT
+# # 📊 UTILIZATION CHAT
 # # =========================
-# @app.post("/run-agent/truck-utilization")
-# def run_truck_utilization_agent(request: RunAgentRequest):
-#     try:
-#         dispatch_data = request.data.get("dispatch", [])
+# # =========================
+# # 📊 UTILIZATION CHAT
+# # =========================
+# @app.post("/utilization-chat")
+# async def utilization_chat(
+#     query: str = Form(...),
+#     files: list[UploadFile] = File(None)
+# ):
 
-#         if not dispatch_data:
-#             return {"status": "failed", "message": "No dispatch data provided"}
+#     session = get_session("utilization_chat")
 
-#         df = pd.DataFrame(dispatch_data)
-#         df.columns = df.columns.str.strip().str.lower()
+#     # =========================
+#     # LOAD FILE
+#     # =========================
+#     if files:
+#         session["data"] = load_excel_data(files)
 
-#         df, errors = validate_and_convert_dataframe(df, request.datatype_config)
+#     data = session["data"]
 
-#         if errors:
-#             return {"status": "failed", "errors": errors}
+#     # =========================
+#     # MODIFY OUTPUT
+#     # =========================
+#     if "modify" in query.lower():
 
-#         cleaned_data = {"dispatch": df.to_dict(orient="records")}
+#         updated = modify_output(
+#             session["last_output"],
+#             query
+#         )
 
-#         result = check_truck_utilization.invoke({
-#             "data": cleaned_data,
-#             "config": request.parameter_config
-#         })
+#         session["last_output"] = updated
+#         append_history("utilization_chat", updated)
+
+#         chat_response = generate_chat_response(
+#             user_query=query,
+#             tool_output=updated,
+#             history=session["history"],
+#             skill="truck utilization"
+#         )
 
 #         return {
-#             "status": "success",
-#             "result": result
+#             "response": chat_response,
+#             "data": updated
 #         }
 
-#     except Exception as e:
-#         return {"status": "failed", "message": str(e)}
+#     # =========================
+#     # GENERATE UTILIZATION
+#     # =========================
+#     result = check_truck_utilization.invoke({
+#         "data": {
+#             "dispatch": data.get("dispatch", [])
+#         }
+#     })
+
+#     output = result.get("truck_utilization", [])
+
+#     session["last_output"] = output
+#     append_history("utilization_chat", output)
+
+#     # =========================
+#     # AI RESPONSE
+#     # =========================
+#     chat_response = generate_chat_response(
+#         user_query=query,
+#         tool_output=output,
+#         history=session["history"],
+#         skill="truck utilization"
+#     )
+
+#     return {
+#         "response": chat_response,
+#         "data": output
+#     }
+# # =========================
+# # 📦 ADHERENCE CHAT
+# # =========================
+# @app.post("/adherence-chat")
+# async def adherence_chat(
+#     query: str = Form(...),
+#     files: list[UploadFile] = File(None)
+# ):
+
+#     session = get_session("adherence_chat")
+
+#     # =========================
+#     # LOAD FILE
+#     # =========================
+#     if files:
+#         session["data"] = load_excel_data(files)
+
+#     data = session["data"]
+
+#     # =========================
+#     # GENERATE ADHERENCE
+#     # =========================
+#     result = check_dispatch_adherence.invoke({
+#         "data": {
+#             "dispatch": data.get("dispatch", [])
+#         }
+#     })
+
+#     output = result.get("adherence", [])
+
+#     session["last_output"] = output
+#     append_history("adherence_chat", output)
+
+#     # 🔥 HUMAN RESPONSE
+#     chat_response = generate_chat_response(
+#         user_query=query,
+#         tool_output=output,
+#         history=session["history"],
+#         skill="dispatch adherence"
+#     )
+
+#     return {
+#         "response": chat_response,
+#         "data": output
+#     }
+
 
 from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
 
@@ -406,6 +287,7 @@ from src.tools.utilization.adherence_tool import check_dispatch_adherence
 # UTILS
 # =========================
 from src.utils.modifier import modify_output
+from src.utils.file_handler import upload_report, extract_text   # ✅ NEW
 from src.chat.chat_agent import generate_chat_response
 
 # =========================
@@ -414,10 +296,21 @@ from src.chat.chat_agent import generate_chat_response
 from src.sessions.store import (
     get_session,
     append_history,
-    reset_session
+    reset_session,
+    save_session,           # ✅ NEW
+    update_session_data     # ✅ NEW
 )
 
 app = FastAPI()
+
+# ✅ NEW — CORS so UI can talk to Cloud Run
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 print("🔥 SKILL CHAT API LOADED 🔥")
 
@@ -430,11 +323,61 @@ class ChatRequest(BaseModel):
 
 
 # =========================
-# HEALTH
+# ✅ NEW — HEALTH CHECK
+# Cloud Run needs this to confirm container started
+# =========================
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
+
+# =========================
+# HOME
 # =========================
 @app.get("/")
 def home():
     return {"message": "Skill Chat API Running 🚀"}
+
+
+# =========================
+# ✅ NEW — FILE UPLOAD
+# UI calls this first before sending chat messages
+# =========================
+@app.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    chat_name: str = Form(...)   # e.g. "truck_chat"
+):
+    file_bytes = await file.read()
+    filename = file.filename
+
+    # Upload to GCS and extract text for LLM context
+    gcs_uri = upload_report(file_bytes, filename, chat_name)
+    file_context = extract_text(file_bytes, filename)
+
+    # Save GCS URI + extracted text into the session
+    update_session_data(chat_name, {
+        "file_uri": gcs_uri,
+        "file_name": filename,
+        "file_context": file_context,
+    })
+
+    return {
+        "status": "ok",
+        "file_uri": gcs_uri,
+        "filename": filename,
+        "preview": file_context[:200]
+    }
+
+
+# =========================
+# ✅ NEW — RESET SESSION
+# UI calls this when user clicks "New Chat"
+# =========================
+@app.post("/reset")
+async def reset_chat(chat_name: str = Form(...)):
+    reset_session(chat_name)
+    return {"status": "ok", "message": f"{chat_name} session cleared"}
 
 
 # =========================
@@ -486,6 +429,7 @@ async def truck_chat(
     # =========================
     if files:
         session["data"] = load_excel_data(files)
+        save_session("truck_chat", session)   # ✅ NEW — persist to Firestore
 
     data = session["data"]
 
@@ -500,7 +444,9 @@ async def truck_chat(
         )
 
         session["last_output"] = updated
-        append_history("truck_chat", updated)
+        save_session("truck_chat", session)   # ✅ NEW
+        append_history("truck_chat", {"role": "user", "content": query})        # ✅ NEW — proper format
+        append_history("truck_chat", {"role": "assistant", "content": str(updated)})  # ✅ NEW
 
         chat_response = generate_chat_response(
             user_query=query,
@@ -526,9 +472,10 @@ async def truck_chat(
     output = result.get("schedule", [])
 
     session["last_output"] = output
-    append_history("truck_chat", output)
+    save_session("truck_chat", session)       # ✅ NEW — persist to Firestore
+    append_history("truck_chat", {"role": "user", "content": query})           # ✅ NEW
+    append_history("truck_chat", {"role": "assistant", "content": str(output)}) # ✅ NEW
 
-    # 🔥 HUMAN RESPONSE
     chat_response = generate_chat_response(
         user_query=query,
         tool_output=output,
@@ -545,9 +492,6 @@ async def truck_chat(
 # =========================
 # 📊 UTILIZATION CHAT
 # =========================
-# =========================
-# 📊 UTILIZATION CHAT
-# =========================
 @app.post("/utilization-chat")
 async def utilization_chat(
     query: str = Form(...),
@@ -561,6 +505,7 @@ async def utilization_chat(
     # =========================
     if files:
         session["data"] = load_excel_data(files)
+        save_session("utilization_chat", session)   # ✅ NEW
 
     data = session["data"]
 
@@ -575,7 +520,9 @@ async def utilization_chat(
         )
 
         session["last_output"] = updated
-        append_history("utilization_chat", updated)
+        save_session("utilization_chat", session)   # ✅ NEW
+        append_history("utilization_chat", {"role": "user", "content": query})
+        append_history("utilization_chat", {"role": "assistant", "content": str(updated)})
 
         chat_response = generate_chat_response(
             user_query=query,
@@ -601,11 +548,10 @@ async def utilization_chat(
     output = result.get("truck_utilization", [])
 
     session["last_output"] = output
-    append_history("utilization_chat", output)
+    save_session("utilization_chat", session)       # ✅ NEW
+    append_history("utilization_chat", {"role": "user", "content": query})
+    append_history("utilization_chat", {"role": "assistant", "content": str(output)})
 
-    # =========================
-    # AI RESPONSE
-    # =========================
     chat_response = generate_chat_response(
         user_query=query,
         tool_output=output,
@@ -617,6 +563,8 @@ async def utilization_chat(
         "response": chat_response,
         "data": output
     }
+
+
 # =========================
 # 📦 ADHERENCE CHAT
 # =========================
@@ -633,6 +581,7 @@ async def adherence_chat(
     # =========================
     if files:
         session["data"] = load_excel_data(files)
+        save_session("adherence_chat", session)     # ✅ NEW
 
     data = session["data"]
 
@@ -648,9 +597,10 @@ async def adherence_chat(
     output = result.get("adherence", [])
 
     session["last_output"] = output
-    append_history("adherence_chat", output)
+    save_session("adherence_chat", session)         # ✅ NEW
+    append_history("adherence_chat", {"role": "user", "content": query})
+    append_history("adherence_chat", {"role": "assistant", "content": str(output)})
 
-    # 🔥 HUMAN RESPONSE
     chat_response = generate_chat_response(
         user_query=query,
         tool_output=output,
