@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 # ─── GCS config ─────────────────────────────────────────────────────────────────
 GCS_BUCKET = os.environ.get("GCS_BUCKET_NAME", "your-bucket-name")
-_storage_client = storage.Client(project=os.environ.get("GCP_PROJECT_ID"))
+# _storage_client = storage.Client(project=os.environ.get("GCP_PROJECT_ID"))
+_storage_client = None
 
 
 # ==============================================================================
@@ -31,12 +32,10 @@ def upload_report(
     filename: str,
     chat_name: str,
 ) -> str:
-    """
-    Upload a report file to GCS.
-    Returns the GCS URI:  gs://bucket/reports/chat_name/filename
+    global _storage_client
+    if _storage_client is None:
+        _storage_client = storage.Client(project=os.environ.get("GCP_PROJECT_ID"))
 
-    Store this URI in session["data"]["file_uri"] via update_session_data().
-    """
     try:
         bucket = _storage_client.bucket(GCS_BUCKET)
         blob_path = f"reports/{chat_name}/{filename}"

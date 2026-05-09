@@ -84,7 +84,8 @@ from google.cloud import firestore
 logger = logging.getLogger(__name__)
 
 # Firestore client (initialised once at import time)
-_db = firestore.Client(project=os.environ.get("GCP_PROJECT_ID"))
+# _db = firestore.Client(project=os.environ.get("GCP_PROJECT_ID"))
+_db = None
 _COLLECTION = "chat_sessions"
 
 # ─── shape every session document follows ──────────────────────────────────────
@@ -108,12 +109,10 @@ KNOWN_SESSIONS = [
 # GET SESSION
 # ==============================================================================
 def get_session(chat_name: str) -> dict:
-    """
-    Fetch session from Firestore.
-    If it doesn't exist yet, creates it and returns the default shape.
-    Returns a plain dict  —  same shape as before:
-        { "data": {}, "last_output": [], "history": [] }
-    """
+    global _db
+    if _db is None:
+        _db = firestore.Client(project=os.environ.get("GCP_PROJECT_ID"))
+
     try:
         doc_ref = _db.collection(_COLLECTION).document(chat_name)
         doc = doc_ref.get()
@@ -121,13 +120,11 @@ def get_session(chat_name: str) -> dict:
         if doc.exists:
             return doc.to_dict()
 
-        # First time — create the document
         _db.collection(_COLLECTION).document(chat_name).set(_DEFAULT_SESSION)
         return dict(_DEFAULT_SESSION)
 
     except Exception as e:
         logger.error(f"[store] get_session failed for '{chat_name}': {e}")
-        # Fallback to empty session so the app doesn't crash
         return dict(_DEFAULT_SESSION)
 
 
